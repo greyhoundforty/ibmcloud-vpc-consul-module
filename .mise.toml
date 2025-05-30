@@ -1,0 +1,141 @@
+[tools]
+usage = "latest"
+terraform = "1.12.0"
+packer = "1.11.0"
+
+# Terraform Tasks
+[tasks."terraform:init"]
+description = "Initializes a Terraform working directory"
+run = "terraform init"
+alias = "tfi"
+
+[tasks."terraform:plan"]
+description = "Generates an execution plan for Terraform"
+run = "terraform plan -out $(terraform workspace show).tfplan"
+alias = "tfp"
+
+[tasks."terraform:apply"]
+description = "Applies the changes required to reach the desired state of the configuration"
+run = "terraform apply $(terraform workspace show).tfplan"
+alias = "tfa"
+
+[tasks."terraform:destroy"]
+description = "Destroy Terraform-managed infrastructure"
+run = "terraform destroy"
+alias = "tfd"
+
+[tasks."terraform:validate"]
+description = "Validates the Terraform files"
+run = "terraform validate"
+alias = "tfv"
+
+[tasks."terraform:format"]
+description = "Formats the Terraform files"
+run = "terraform fmt"
+alias = "tfm"
+
+[tasks."terraform:check"]
+description = "Formats and validates the Terraform files"
+depends = ["terraform:format", "terraform:validate"]
+alias = "tfc"
+
+[tasks."terraform:reset"]
+description = "Removes terraform init directories and statefiles and resets directory"
+run = "rm -rf .terraform terraform.tfstate.d *.tfplan"
+alias = "tfr"
+
+# Packer Tasks
+[tasks."packer:init"]
+description = "Downloads Packer plugins required for the template"
+run = "packer init packer/"
+alias = "pki"
+
+[tasks."packer:validate"]
+description = "Validates the Packer template"
+run = "packer validate packer/consul.pkr.hcl"
+alias = "pkv"
+
+[tasks."packer:format"]
+description = "Formats the Packer template files"
+run = "packer fmt packer/"
+alias = "pkf"
+
+[tasks."packer:build"]
+description = "Builds the Consul image"
+run = "packer build packer/consul.pkr.hcl"
+alias = "pkb"
+
+[tasks."packer:build:debug"]
+description = "Builds the Consul image with debug output"
+run = "PACKER_LOG=1 packer build -debug packer/consul.pkr.hcl"
+alias = "pkbd"
+
+[tasks."packer:inspect"]
+description = "Inspects the Packer template"
+run = "packer inspect packer/consul.pkr.hcl"
+alias = "pkins"
+
+# Combined Tasks
+[tasks."consul:build-image"]
+description = "Validates and builds the Consul image"
+depends = ["packer:format", "packer:validate", "packer:build"]
+alias = "cbi"
+
+[tasks."consul:deploy"]
+description = "Deploys the Consul cluster infrastructure"
+depends = ["terraform:check", "terraform:plan", "terraform:apply"]
+alias = "cdeploy"
+
+[tasks."consul:full-deploy"]
+description = "Builds image and deploys Consul cluster"
+depends = ["consul:build-image", "consul:deploy"]
+alias = "cfd"
+
+# Utility Tasks
+[tasks."consul:ssh"]
+description = "SSH into a Consul server"
+run = """
+CONSUL_IP=$(terraform output -raw consul_server_ip)
+ssh -i ~/.ssh/id_rsa root@$CONSUL_IP
+"""
+alias = "cssh"
+
+[tasks."consul:status"]
+description = "Check Consul cluster status"
+run = """
+CONSUL_IP=$(terraform output -raw consul_lb_hostname)
+curl -s http://$CONSUL_IP:8500/v1/status/leader
+"""
+alias = "cstatus"
+
+[tasks."consul:clean"]
+description = "Clean up all Consul resources"
+depends = ["terraform:destroy", "terraform:reset"]
+run = "rm -rf packer/manifest.json"
+alias = "cclean"
+
+# Environment setup
+[tasks."env:setup"]
+description = "Setup environment variables"
+run = """
+echo "Setting up IBM Cloud environment variables..."
+echo "Ensure you have set:"
+echo "  - IBMCLOUD_API_KEY"
+echo "  - IBM_REGION"
+echo "  - IBM_RESOURCE_GROUP_ID"
+echo "  - IBM_VPC_ID"
+echo "  - IBM_SUBNET_ID"
+"""
+alias = "envs"
+
+[tasks."env:check"]
+description = "Check required environment variables"
+run = """
+if [ -z "$IBMCLOUD_API_KEY" ]; then echo "ERROR: IBMCLOUD_API_KEY not set"; exit 1; fi
+if [ -z "$IBM_REGION" ]; then echo "ERROR: IBM_REGION not set"; exit 1; fi
+if [ -z "$IBM_RESOURCE_GROUP" ]; then echo "ERROR: IBM_RESOURCE_GROUP not set"; exit 1; fi
+if [ -z "$IBM_VPC_ID" ]; then echo "ERROR: IBM_VPC_ID not set"; exit 1; fi
+if [ -z "$IBM_SUBNET_ID" ]; then echo "ERROR: IBM_SUBNET_ID not set"; exit 1; fi
+echo "Environment variables are set correctly"
+"""
+alias = "envc"
