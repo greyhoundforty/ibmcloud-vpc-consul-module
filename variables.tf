@@ -13,13 +13,19 @@ variable "existing_resource_group" {
 variable "project_name" {
   description = "Name of the project - used for resource naming"
   type        = string
-  default     = "consul-cluster"
+  default     = ""
 }
 
 variable "environment" {
   description = "Environment name (dev, staging, prod)"
   type        = string
   default     = "dev"
+}
+
+variable "default_address_prefix" {
+  description = "Default address prefix for the VPC"
+  type        = string
+  default     = "auto"
 }
 
 variable "base_image_name" {
@@ -35,6 +41,12 @@ variable "consul_cluster_size" {
     condition     = var.consul_cluster_size >= 3 && var.consul_cluster_size <= 7 && var.consul_cluster_size % 2 == 1
     error_message = "Consul cluster size must be an odd number between 3 and 7."
   }
+}
+
+variable "ssh_allowed_ips" {
+  description = "IP or CIDR block allowed to SSH into Consul servers"
+  type        = string
+  default     = "0.0.0.0/0"
 }
 
 variable "consul_instance_profile" {

@@ -11,22 +11,24 @@ resource "local_file" "templates_dir" {
 resource "local_file" "terraform_tfvars_example" {
   content  = <<-EOF
 # IBM Cloud Configuration
-ibm_region         = "us-south"
-resource_group_name = "default"
+ibm_region             = "us-south"
+existing_resource_group = "default"
 
 # Project Configuration
 project_name = "consul-cluster"
 environment  = "dev"
 
 # Consul Configuration
-consul_image_name    = "consul-1.19.1-20250530123456"  # Replace with actual image name from Packer
+base_image_name    = "consul-1.19.1-20250530123456"  # Replace with actual image name from Packer
 consul_cluster_size  = 3
 consul_datacenter    = "dc1"
 consul_encrypt_key   = ""  # Leave empty to auto-generate or provide base64 encoded key
 
 # Instance Configuration
 consul_instance_profile = "bx2-2x8"
-ssh_key_name           = "your-ssh-key-name"  # Replace with your SSH key name
+
+# SSH Configuration (optional - will auto-generate if empty)
+existing_ssh_key = ""  # Replace with your SSH key name or leave empty to auto-generate
 
 # Security Configuration
 allowed_cidr_blocks = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
@@ -222,5 +224,3 @@ secrets/
 EOF
   filename = "${path.module}/.gitignore"
 }
-
-

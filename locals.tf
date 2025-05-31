@@ -1,23 +1,7 @@
 locals {
   # Resource naming
-  name_prefix = "${var.project_name}-${var.environment}"
+  name_prefix = var.project_name != "" ? var.project_name : "${random_string.prefix.0.result}"
   ssh_key_ids = var.existing_ssh_key != "" ? [data.ibm_is_ssh_key.sshkey[0].id] : [ibm_is_ssh_key.generated_key[0].id]
-
-
-  # Network configuration
-  vpc_cidr = "10.240.0.0/16"
-  availability_zones = [
-    "${var.ibm_region}-1",
-    "${var.ibm_region}-2",
-    "${var.ibm_region}-3"
-  ]
-
-  # Subnet CIDRs
-  subnet_cidrs = {
-    "${var.ibm_region}-1" = "10.240.1.0/24"
-    "${var.ibm_region}-2" = "10.240.2.0/24"
-    "${var.ibm_region}-3" = "10.240.3.0/24"
-  }
 
   # Common tags
   common_tags = merge(var.tags, {
@@ -26,6 +10,18 @@ locals {
     ManagedBy   = "terraform"
     Component   = "consul"
   })
+
+  # IBM Cloud tags as list of strings (required format: ["key:value"])
+  common_tags_list = [
+    for key, value in local.common_tags : "${key}:${value}"
+  ]
+
+  zones = length(data.ibm_is_zones.regional.zones)
+  vpc_zones = {
+    for zone in range(local.zones) : zone => {
+      zone = "${var.ibm_region}-${zone + 1}"
+    }
+  }
 
   # Consul configuration
   consul_ports = {
